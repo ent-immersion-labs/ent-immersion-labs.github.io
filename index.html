@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medtronic ENT Immersion Lab Availability</title>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ─── Header ────────────────────────────────────────────────────── */
+    header {
+      background: #003da5;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header svg { flex-shrink: 0; }
+    header .title-block h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.3px;
+    }
+    header .title-block p {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.75);
+      margin-top: 2px;
+    }
+
+    /* ─── Main Layout ───────────────────────────────────────────────── */
+    main {
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+
+    /* ─── Section Card ──────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      padding: 36px 40px;
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #003da5;
+      margin-bottom: 6px;
+    }
+    .card .subtitle {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    /* ─── Date List ─────────────────────────────────────────────────── */
+    .date-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .date-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1.5px solid #e0e6f0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: #fff;
+      user-select: none;
+    }
+    .date-option input[type="radio"] { display: none; }
+    .date-option:hover {
+      border-color: #003da5;
+      background: #f5f7fc;
+    }
+    .date-option.selected {
+      border-color: #003da5;
+      background: #eef2fb;
+    }
+    .date-option .date-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .date-option .date-dow {
+      font-size: 0.82rem;
+      color: #888;
+      font-weight: 400;
+      margin-left: 6px;
+    }
+    .date-option .check-mark {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid #d0d8e8;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      color: transparent;
+      font-size: 0.75rem;
+    }
+    .date-option.selected .check-mark {
+      background: #003da5;
+      border-color: #003da5;
+      color: #fff;
+    }
+    .no-dates {
+      text-align: center;
+      padding: 30px;
+      color: #999;
+      font-size: 0.9rem;
+      background: #fafafa;
+      border-radius: 8px;
+      border: 1px dashed #ddd;
+    }
+    /* ─── Copy Dates — inline summary row ──────────────────────────── */
+    .dates-summary {
+      display: none;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .dates-summary-text {
+      font-size: 0.83rem;
+      color: #666;
+      line-height: 1.5;
+    }
+    .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: 1px solid #c4d0ea;
+      color: #003da5;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-copy:hover { background: #f0f4fb; border-color: #003da5; }
+    .btn-copy.copied { border-color: #66bb6a; color: #2e7d32; background: #e8f5e9; }
+    /* Loading skeleton */
+    .skeleton-list { display: flex; flex-direction: column; gap: 8px; }
+    .skeleton-row {
+      height: 52px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #e8edf5 25%, #f4f6fb 50%, #e8edf5 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Form Fields ───────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    input[type="text"],
+    input[type="email"],
+    textarea,
+    select {
+      border: 1.5px solid #d0d8e8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.93rem;
+      color: #1a1a2e;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #003da5; }
+    input.error, textarea.error { border-color: #d32f2f; background: #fff8f8; }
+    textarea { resize: vertical; min-height: 80px; }
+    .field-error {
+      font-size: 0.78rem;
+      color: #d32f2f;
+      margin-top: 2px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    /* ─── Submit Button ──────────────────────────────────────────────── */
+    .btn-submit {
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
+      background: #003da5;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-submit:hover { background: #0050d0; }
+    .btn-submit:active { transform: scale(0.99); }
+    .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-submit.loading .btn-spinner { display: block; }
+
+    /* ─── Success State ──────────────────────────────────────────────── */
+    #success-message {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    #success-message .check-icon {
+      width: 64px;
+      height: 64px;
+      background: #e8f5e9;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 2rem;
+    }
+    #success-message h2 { color: #2e7d32; font-size: 1.4rem; margin-bottom: 10px; }
+    #success-message p { color: #666; font-size: 0.95rem; line-height: 1.6; }
+    .success-details {
+      margin: 20px auto 0;
+      max-width: 420px;
+      text-align: left;
+      background: #f4f6f9;
+      border-radius: 10px;
+      padding: 18px 22px;
+    }
+    .success-details .detail-row {
+      display: flex;
+      gap: 10px;
+      font-size: 0.88rem;
+      padding: 5px 0;
+      border-bottom: 1px solid #e0e6f0;
+      color: #444;
+    }
+    .success-details .detail-row:last-child { border-bottom: none; }
+    .success-details .detail-label {
+      font-weight: 600;
+      color: #003da5;
+      min-width: 110px;
+      flex-shrink: 0;
+    }
+    /* ─── Calendar-fail warning ─────────────────────────────────────── */
+    #cal-warning {
+      display: none;
+      margin: 16px auto 0;
+      max-width: 420px;
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: #7a5a00;
+      text-align: left;
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      font-size: 0.82rem;
+      color: #888;
+      padding: 20px;
+      line-height: 1.8;
+    }
+    footer a {
+      color: #003da5;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 560px) {
+      .card { padding: 24px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      header { padding: 16px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     ADMIN CONFIG
+     The page automatically fetches any TeamUp event titled
+     "Open ENT Immersion Lab" and shows it as an available date.
+     Just create events with that title on TeamUp — no edits needed here.
+════════════════════════════════════════════════════════════════════ -->
+<script>
+const ADMIN_CONFIG = {
+  calendarLink:      "https://teamup.com/c/mwb2ov/medtronic-ent-education",
+  teamupCalendarKey: "ks5ec5xvdnuwdstp8b",
+  teamupApiToken:    "aa5e53d3b76df21cf80372c71c76da3e5c47ed91bc3f7e52c988b8ca1989cfbf",
+  // Title to look for on TeamUp (case-insensitive match)
+  openEventTitle:    "open ent immersion lab",
+};
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<header>
+  <!-- Medtronic logo (white) -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33.553085 5.7294618" width="150" height="26" aria-label="Medtronic" style="flex-shrink:0;opacity:0.95;">
+    <g transform="translate(-123.20727,-277.37219)">
+      <path fill="#ffffff" d="m 132.09096,280.66695 c -0.0466,-0.58138 -0.3489,-0.92251 -0.96132,-0.92251 -0.56585,0 -0.9144,0.35665 -0.97649,0.92251 z m 0.91475,0.21696 c 0,0.18626 -0.0155,0.37994 -0.0466,0.53481 h -2.79048 c 0.10055,0.46531 0.49601,0.75212 1.24002,0.75212 0.004,0 0.007,-3.5e-4 0.01,-3.5e-4 0.003,0 0.005,-3.5e-4 0.008,-3.5e-4 0.0469,0 0.0928,-0.002 0.13829,-0.004 0.0243,-10e-4 0.049,-0.003 0.0734,-0.005 0.0194,-0.002 0.0385,-0.004 0.0575,-0.005 0.30974,-0.0314 0.6043,-0.11465 0.87453,-0.2413 0.0212,-0.0102 0.043,-0.0201 0.0635,-0.0307 h 3.5e-4 c 0.0547,-0.0275 0.10795,-0.0579 0.16052,-0.0889 h 0.0236 v 0.78458 c -0.40851,0.2473 -0.88723,0.38947 -1.39946,0.38947 v -0.002 c -0.0187,3.6e-4 -0.037,0.002 -0.0561,0.002 -1.40335,0 -2.17064,-0.79834 -2.17064,-1.96109 0,-1.24813 0.79058,-2.06975 1.93781,-2.06975 1.14723,0 1.87607,0.81386 1.87607,1.94557 m -9.66646,2.00766 h 0.95356 l 0.17815,-3.34081 0.0388,-0.90699 h 0.0155 l 0.20179,0.90699 0.77505,3.34081 h 1.1938 l 0.78281,-3.34081 0.19368,-0.90699 h 0.0155 l 0.0388,0.90699 0.18626,3.34081 h 0.99201 l -0.32561,-5.34847 h -1.58115 l -0.71332,3.20922 -0.15487,0.81386 h -0.0155 l -0.16298,-0.81386 -0.71297,-3.20922 h -1.5815 z m 16.41052,0.0776 c -0.89147,0 -1.39559,-0.41099 -1.39559,-1.34091 v -1.82951 h -1.06963 v 1.94557 c 0,0.28681 0.10866,0.40323 0.34114,0.40323 0.0543,0 0.11606,0 0.18591,-0.0155 h 0.0233 v 0.75953 c -0.0931,0.0233 -0.27905,0.0466 -0.4184,0.0466 -0.52705,0 -0.85301,-0.20143 -0.99236,-0.64346 -0.27905,0.43427 -0.72073,0.67451 -1.27106,0.67451 -0.9846,0 -1.78294,-0.76729 -1.78294,-2.02318 0,-1.24037 0.79834,-2.00766 1.78294,-2.00766 0.48789,0 0.89147,0.18591 1.17016,0.52705 v -1.92229 h 0.96132 v 1.47285 h 1.06963 v -0.92251 h 0.96132 v 0.92251 h 1.03117 v 0.78281 h -1.03117 v 1.78294 c 0,0.38735 0.19367,0.57362 0.5662,0.57362 0.1704,0 0.28646,-0.0155 0.44168,-0.0543 h 0.0233 v 0.79058 c -0.18627,0.0466 -0.41099,0.0776 -0.5969,0.0776 m -4.39526,-0.81386 c 0.65122,0 1.01529,-0.50377 1.01529,-1.20932 0,-0.6978 -0.36407,-1.20156 -1.01529,-1.20156 -0.65899,0 -1.00013,0.50376 -1.00013,1.20156 0,0.70555 0.34114,1.20932 1.00013,1.20932 m 6.37963,-1.2947 c 0,-0.62794 0.32561,-0.97684 0.9458,-0.97684 0.1083,0 0.22472,0.0155 0.33302,0.0469 h 0.0155 v -0.89958 c -0.10054,-0.0385 -0.23248,-0.0617 -0.37994,-0.0617 -0.46496,0 -0.77505,0.28681 -0.95321,0.75177 v -0.7052 h -0.92251 v 3.87562 h 0.96132 z m 3.34892,2.10856 c -1.21708,0 -2.03906,-0.88371 -2.03906,-2.01542 0,-1.13171 0.82198,-2.01542 2.03906,-2.01542 1.20897,0 2.03094,0.88371 2.03094,2.01542 0,1.13171 -0.82197,2.01542 -2.03094,2.01542 m 0,-0.82938 c 0.68968,0 1.04634,-0.50377 1.04634,-1.18604 0,-0.68227 -0.35666,-1.18604 -1.04634,-1.18604 -0.67451,0 -1.05445,0.50377 -1.05445,1.18604 0,0.68227 0.37994,1.18604 1.05445,1.18604 m 3.50591,-1.41076 c 0,-0.5969 0.30233,-0.9846 0.86042,-0.9846 0.55033,0 0.80645,0.36442 0.80645,0.9846 v 2.16253 h 0.96097 v -2.20134 c 0,-0.93027 -0.48049,-1.75189 -1.52683,-1.75189 -0.55809,0 -0.93027,0.27905 -1.13982,0.69779 v -0.62018 h -0.92251 v 3.87562 h 0.96132 z m 4.3254,-2.65889 c 0,0.31009 -0.248,0.57362 -0.57326,0.57362 -0.31009,0 -0.56621,-0.26353 -0.56621,-0.57362 0,-0.31009 0.25612,-0.56585 0.56621,-0.56585 0.32526,0 0.57326,0.25576 0.57326,0.56585 m 0.53517,4.82142 c -0.14746,0.031 -0.31786,0.0543 -0.47308,0.0543 -0.73624,0 -1.13171,-0.3877 -1.13171,-1.10066 v -2.82928 h 0.96908 v 2.75943 c 0,0.25576 0.12383,0.37994 0.3877,0.37994 0.0617,0 0.13935,-0.008 0.22472,-0.0233 h 0.0233 z m 0.0928,-1.93781 c 0,-1.13171 0.82162,-2.01542 2.04646,-2.01542 0.3489,0 0.74436,0.0854 1.03893,0.248 v 0.85267 h -0.0233 c -0.30233,-0.17816 -0.60466,-0.26353 -0.9458,-0.26353 -0.7366,0 -1.13171,0.50377 -1.13171,1.17828 0,0.67451 0.39511,1.17828 1.13171,1.17828 0.34114,0 0.64347,-0.0854 0.9458,-0.26353 h 0.0233 v 0.85266 c -0.29457,0.16299 -0.69003,0.24801 -1.03893,0.24801 -1.22484,0 -2.04646,-0.88371 -2.04646,-2.01542"/>
+    </g>
+  </svg>
+  <div class="title-block">
+    <h1>ENT Immersion Lab Availability</h1>
+    <p>Medtronic ENT — Jacksonville, Florida</p>
+    <p style="margin-top:6px; font-size:0.8rem; color:rgba(255,255,255,0.6);">
+      Questions? Contact
+      <a href="mailto:josh.a.register@medtronic.com" style="color:rgba(255,255,255,0.9); font-weight:600; text-decoration:none;">Josh Register</a>
+      or
+      <a href="mailto:ana.maria.rojas@medtronic.com" style="color:rgba(255,255,255,0.9); font-weight:600; text-decoration:none;">Ana Maria Rojas</a>
+    </p>
+  </div>
+</header>
+
+<main>
+  <div id="booking-form-wrapper">
+
+    <!-- Step 1: Pick a date -->
+    <div class="card">
+      <h2>Step 1 — Select an Available Date</h2>
+      <p class="subtitle">Select an available date below and complete the form to submit your request.</p>
+
+      <!-- Copy Dates button -->
+      <div class="dates-summary" id="copy-dates-wrap">
+        <button class="btn-copy" id="btn-copy" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span id="copy-label">Copy Available Dates</span>
+        </button>
+      </div>
+
+      <div class="date-list" id="date-list">
+        <div class="skeleton-list">
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Your info -->
+    <div class="card">
+      <h2>Step 2 — Lab Information</h2>
+      <p class="subtitle">Please fill in your details so we can confirm your booking.</p>
+      <form id="booking-form" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="rep-name">Rep Name *</label>
+            <input type="text" id="rep-name" placeholder="e.g. Jane Smith" required />
+            <span class="field-error" id="err-name">Please enter your full name.</span>
+          </div>
+          <div class="form-group">
+            <label for="rep-email">Rep Email *</label>
+            <input type="email" id="rep-email" placeholder="e.g. jane.smith@medtronic.com" required />
+            <span class="field-error" id="err-email">Please enter a valid email address.</span>
+          </div>
+          <div class="form-group">
+            <label for="rep-territory">District *</label>
+            <input type="text" id="rep-territory" placeholder="e.g. Southeast TN" required />
+            <span class="field-error" id="err-territory">Please enter your district.</span>
+          </div>
+          <div class="form-group full">
+            <label for="rep-surgeon">Surgeon / Account</label>
+            <input type="text" id="rep-surgeon" placeholder="e.g. Dr. Jones — St. Mary's Hospital" />
+            <input type="hidden" id="rep-account" value="" />
+          </div>
+          <div class="form-group">
+            <label for="rep-product-focus">Lab Product Focus</label>
+            <input type="text" id="rep-product-focus" placeholder="e.g. NIM, StealthStation" />
+          </div>
+          <div class="form-group full">
+            <label for="rep-notes">Additional Notes</label>
+            <textarea id="rep-notes" placeholder="Any special requests, attendee count, or other details…"></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submit-btn" disabled>
+          <div class="btn-spinner" id="btn-spinner"></div>
+          <span id="btn-label">Submit Booking Request →</span>
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Success screen -->
+  <div id="success-message" class="card">
+    <div class="check-icon">✓</div>
+    <h2>Request Submitted!</h2>
+    <p id="success-text"></p>
+    <div class="success-details" id="success-details"></div>
+    <div id="cal-warning">
+      ⚠️ Your request was received, but we were unable to automatically update the calendar. The Med Ed team has been notified and will update it manually.
+    </div>
+  </div>
+</main>
+
+<footer>Medtronic ENT Education &nbsp;·&nbsp; Internal Use Only</footer>
+
+<script>
+(function () {
+  const cfg        = ADMIN_CONFIG;
+  const listEl     = document.getElementById('date-list');
+  const form       = document.getElementById('booking-form');
+  const submitBtn  = document.getElementById('submit-btn');
+  const successEl  = document.getElementById('success-message');
+  const successText= document.getElementById('success-text');
+  const formWrapper= document.getElementById('booking-form-wrapper');
+
+  let selectedDate = null;
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS= ['January','February','March','April','May','June',
+                 'July','August','September','October','November','December'];
+  const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatDate(dtStr) {
+    // dtStr is "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS"
+    const [y, m, d] = dtStr.slice(0, 10).split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const day  = DAYS[date.getDay()].slice(0, 3);
+    return `${day}, ${SHORT_MONTHS[m-1]} ${d}, ${y}`;
+  }
+
+  // ── Fetch available dates from TeamUp ─────────────────────────────
+  async function loadDates() {
+    const today = new Date();
+    const start = today.toISOString().slice(0, 10);
+    const end   = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate())
+                    .toISOString().slice(0, 10);
+
+    let events = [];
+    try {
+      const res = await fetch(
+        `https://api.teamup.com/${cfg.teamupCalendarKey}/events?startDate=${start}&endDate=${end}`,
+        { headers: { 'Teamup-Token': cfg.teamupApiToken } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Filter for "Open ENT Immersion Lab" events (case-insensitive)
+      events = (data.events || []).filter(e =>
+        e.title.trim().toLowerCase() === cfg.openEventTitle
+      );
+
+      // Sort chronologically
+      events.sort((a, b) => a.start_dt.localeCompare(b.start_dt));
+
+    } catch (err) {
+      console.error('Failed to load dates from TeamUp:', err);
+      listEl.innerHTML = '<div class="no-dates">Unable to load available dates. Please try refreshing the page or contact your manager.</div>';
+      return;
+    }
+
+    renderDates(events);
+  }
+
+  // ── Format dates for copy (grouped by month like "January 20, 22, 29") ──
+  function buildCopyText(events) {
+    const groups = {};
+    const order  = [];
+    events.forEach(evt => {
+      const [y, m, d] = evt.start_dt.slice(0, 10).split('-').map(Number);
+      const key = `${y}-${String(m).padStart(2,'0')}`;
+      if (!groups[key]) { groups[key] = { month: MONTHS[m-1], days: [] }; order.push(key); }
+      groups[key].days.push(d);
+    });
+    return order.map(k => `${groups[k].month} ${groups[k].days.join(', ')}`).join('\n');
+  }
+
+  // ── Render date options ───────────────────────────────────────────
+  function renderDates(events) {
+    listEl.innerHTML = '';
+
+    if (events.length === 0) {
+      listEl.innerHTML = '<div class="no-dates">No dates are currently available. Please check back soon or contact your manager.</div>';
+      submitBtn.disabled = true;
+      return;
+    }
+
+    events.forEach((evt, i) => {
+      const dateLabel = formatDate(evt.start_dt);
+      const location  = evt.location ? evt.location.trim() : '';
+      const label     = location ? `${dateLabel} — ${location}` : dateLabel;
+      const [y, m, d] = evt.start_dt.slice(0, 10).split('-').map(Number);
+      const dateObj   = new Date(y, m - 1, d);
+      const dow       = DAYS[dateObj.getDay()];
+      const id = 'date-' + i;
+      const el = document.createElement('label');
+      el.className = 'date-option';
+      el.htmlFor = id;
+      el.innerHTML = `
+        <input type="radio" name="lab-date" id="${id}" value="${evt.id}" />
+        <div>
+          <span class="date-text">${SHORT_MONTHS[m-1]} ${d}, ${y}</span>
+          <span class="date-dow">— ${dow}</span>
+        </div>
+        <div class="check-mark">✓</div>
+      `;
+
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.date-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDate = {
+          eventId:  evt.id,
+          label:    label,
+          date:     evt.start_dt.slice(0, 10),
+          // Store full event for PUT
+          _evt:     evt
+        };
+        submitBtn.disabled = false;
+      });
+
+      listEl.appendChild(el);
+    });
+
+    // Show copy button
+    const copyText = buildCopyText(events);
+    const copyWrap = document.getElementById('copy-dates-wrap');
+    copyWrap.style.display = 'flex';
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(copyText).then(() => {
+        const btn   = document.getElementById('btn-copy');
+        const label = document.getElementById('copy-label');
+        btn.classList.add('copied');
+        label.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          label.textContent = 'Copy Available Dates';
+        }, 2000);
+      });
+    });
+  }
+
+  // ── Inline validation helpers ────────────────────────────────────
+  function setError(inputId, errId, show) {
+    const input = document.getElementById(inputId);
+    const err   = document.getElementById(errId);
+    if (show) {
+      input.classList.add('error');
+      err.classList.add('visible');
+    } else {
+      input.classList.remove('error');
+      err.classList.remove('visible');
+    }
+  }
+
+  // Clear errors on input
+  ['rep-name', 'rep-email', 'rep-territory'].forEach(id => {
+    document.getElementById(id).addEventListener('input', function () {
+      const errMap = { 'rep-name': 'err-name', 'rep-email': 'err-email', 'rep-territory': 'err-territory' };
+      setError(id, errMap[id], false);
+    });
+  });
+
+  // ── Form submission ──────────────────────────────────────────────
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const name         = document.getElementById('rep-name').value.trim();
+    const email        = document.getElementById('rep-email').value.trim();
+    const territory    = document.getElementById('rep-territory').value.trim();
+    const surgeon      = document.getElementById('rep-surgeon').value.trim();
+    const account      = surgeon;
+    const productFocus = document.getElementById('rep-product-focus').value.trim();
+    const notes        = document.getElementById('rep-notes').value.trim();
+
+    // ── Inline validation ──────────────────────────────────────────
+    let valid = true;
+    if (!selectedDate) {
+      document.getElementById('date-list').scrollIntoView({ behavior: 'smooth' });
+      valid = false;
+    }
+    setError('rep-name',      'err-name',      !name);
+    setError('rep-email',     'err-email',      !email || !/\S+@\S+\.\S+/.test(email));
+    setError('rep-territory', 'err-territory',  !territory);
+    if (!name || !email || !/\S+@\S+\.\S+/.test(email) || !territory) valid = false;
+    if (!valid) return;
+
+    // ── Show loading state ─────────────────────────────────────────
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    document.getElementById('btn-label').textContent = 'Submitting…';
+
+    // ── 1. Update the existing TeamUp event ───────────────────────────
+    let calendarUpdated = false;
+    try {
+      const evt        = selectedDate._evt;
+      const eventTitle = `ENT Immersion Lab – Booked: ${name} (${territory})`;
+      const eventNotes =
+        `Rep: ${name}\nEmail: ${email}\nDistrict: ${territory}\n` +
+        `Surgeon / Account: ${surgeon || '—'}\nProduct Focus: ${productFocus || '—'}\n\nNotes: ${notes || 'None'}`;
+
+      const response = await fetch(
+        `https://api.teamup.com/${cfg.teamupCalendarKey}/events/${evt.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Teamup-Token': cfg.teamupApiToken
+          },
+          body: JSON.stringify({
+            id:              evt.id,
+            subcalendar_ids: evt.subcalendar_ids,
+            start_dt:        evt.start_dt.slice(0, 10),
+            end_dt:          evt.end_dt.slice(0, 10),
+            all_day:         true,
+            title:           eventTitle,
+            notes:           eventNotes
+          })
+        }
+      );
+
+      if (response.ok) {
+        calendarUpdated = true;
+      } else {
+        const err = await response.json().catch(() => ({}));
+        console.error('TeamUp API error:', response.status, err);
+      }
+    } catch (err) {
+      console.error('TeamUp API fetch error:', err);
+    }
+
+    // ── 2. Show success screen ─────────────────────────────────────────
+    window.onbeforeunload = null; // clear warning after successful submit
+    formWrapper.style.display = 'none';
+    successEl.style.display = 'block';
+    successText.innerHTML =
+      `Thanks, <strong>${name}</strong>! Your request for <strong>${selectedDate.label}</strong> ` +
+      `has been submitted. The Med Ed team will be in touch within 1–2 business days to confirm your booking.`;
+
+    // ── 3. Populate detail summary ─────────────────────────────────────
+    const rows = [
+      ['Date',          selectedDate.label],
+      ['Name',          name],
+      ['Email',         email],
+      ['District',      territory],
+      surgeon      ? ['Surgeon / Account', surgeon]   : null,
+      productFocus ? ['Product Focus', productFocus] : null,
+      notes        ? ['Notes',         notes]        : null,
+    ].filter(Boolean);
+
+    document.getElementById('success-details').innerHTML = rows
+      .map(([label, val]) =>
+        `<div class="detail-row"><span class="detail-label">${label}</span><span>${val}</span></div>`)
+      .join('');
+
+    // ── 4. Calendar warning if update failed ───────────────────────────
+    if (!calendarUpdated) {
+      document.getElementById('cal-warning').style.display = 'block';
+    }
+  });
+
+  // ── Warn before leaving with unsaved work ────────────────────────
+  function formHasData() {
+    if (selectedDate) return true;
+    return ['rep-name','rep-email','rep-territory','rep-surgeon','rep-product-focus','rep-notes']
+      .some(id => document.getElementById(id).value.trim() !== '');
+  }
+  window.addEventListener('beforeunload', function (e) {
+    if (formHasData()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // ── Kick off date load ────────────────────────────────────────────
+  loadDates();
+
+})();
+</script>
+
+</body>
+</html>
