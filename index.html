@@ -139,6 +139,42 @@
       border-radius: 8px;
       border: 1px dashed #ddd;
     }
+    /* Month grouping header */
+    .month-header {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #003da5;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 6px 2px 2px;
+      margin-top: 10px;
+      border-bottom: 1.5px solid #e0e6f0;
+      margin-bottom: 2px;
+    }
+    .month-header:first-child { margin-top: 0; }
+    /* Selected date banner */
+    #selected-date-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: #eef2fb;
+      border: 1.5px solid #003da5;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 0.88rem;
+      color: #003da5;
+      font-weight: 600;
+    }
+    #selected-date-banner .banner-icon { font-size: 1rem; }
+    /* Submit hint */
+    #submit-hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
     /* ─── Copy Dates — inline summary row ──────────────────────────── */
     .dates-summary {
       display: none;
@@ -406,8 +442,12 @@ const ADMIN_CONFIG = {
     </div>
 
     <!-- Step 2: Your info -->
-    <div class="card">
-      <h2>Step 2 — Lab Information</h2>
+    <div class="card" id="step2-card">
+      <h2>Step 2 — Your Details</h2>
+      <div id="selected-date-banner">
+        <span class="banner-icon">📅</span>
+        <span id="banner-date-text"></span>
+      </div>
       <p class="subtitle">Please fill in your details so we can confirm your booking.</p>
       <form id="booking-form" novalidate>
         <div class="form-grid">
@@ -445,6 +485,7 @@ const ADMIN_CONFIG = {
           <div class="btn-spinner" id="btn-spinner"></div>
           <span id="btn-label">Submit Booking Request →</span>
         </button>
+        <p id="submit-hint">Select a date above to continue</p>
       </form>
     </div>
 
@@ -547,40 +588,65 @@ const ADMIN_CONFIG = {
       return;
     }
 
+    // Group events by month
+    const groups = {};
+    const monthOrder = [];
     events.forEach((evt, i) => {
-      const dateLabel = formatDate(evt.start_dt);
-      const location  = evt.location ? evt.location.trim() : '';
-      const label     = location ? `${dateLabel} — ${location}` : dateLabel;
-      const [y, m, d] = evt.start_dt.slice(0, 10).split('-').map(Number);
-      const dateObj   = new Date(y, m - 1, d);
-      const dow       = DAYS[dateObj.getDay()];
-      const id = 'date-' + i;
-      const el = document.createElement('label');
-      el.className = 'date-option';
-      el.htmlFor = id;
-      el.innerHTML = `
-        <input type="radio" name="lab-date" id="${id}" value="${evt.id}" />
-        <div>
-          <span class="date-text">${SHORT_MONTHS[m-1]} ${d}, ${y}</span>
-          <span class="date-dow">— ${dow}</span>
-        </div>
-        <div class="check-mark">✓</div>
-      `;
+      const [y, m] = evt.start_dt.slice(0, 10).split('-').map(Number);
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      if (!groups[key]) { groups[key] = { label: `${MONTHS[m-1]} ${y}`, events: [] }; monthOrder.push(key); }
+      groups[key].events.push({ evt, i });
+    });
 
-      el.addEventListener('click', () => {
-        document.querySelectorAll('.date-option').forEach(o => o.classList.remove('selected'));
-        el.classList.add('selected');
-        selectedDate = {
-          eventId:  evt.id,
-          label:    label,
-          date:     evt.start_dt.slice(0, 10),
-          // Store full event for PUT
-          _evt:     evt
-        };
-        submitBtn.disabled = false;
+    monthOrder.forEach(key => {
+      // Month header
+      const hdr = document.createElement('div');
+      hdr.className = 'month-header';
+      hdr.textContent = groups[key].label;
+      listEl.appendChild(hdr);
+
+      groups[key].events.forEach(({ evt, i }) => {
+        const dateLabel = formatDate(evt.start_dt);
+        const location  = evt.location ? evt.location.trim() : '';
+        const label     = location ? `${dateLabel} — ${location}` : dateLabel;
+        const [y, m, d] = evt.start_dt.slice(0, 10).split('-').map(Number);
+        const dateObj   = new Date(y, m - 1, d);
+        const dow       = DAYS[dateObj.getDay()];
+        const id = 'date-' + i;
+        const el = document.createElement('label');
+        el.className = 'date-option';
+        el.htmlFor = id;
+        el.innerHTML = `
+          <input type="radio" name="lab-date" id="${id}" value="${evt.id}" />
+          <div>
+            <span class="date-text">${SHORT_MONTHS[m-1]} ${d}, ${y}</span>
+            <span class="date-dow">— ${dow}</span>
+          </div>
+          <div class="check-mark">✓</div>
+        `;
+
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.date-option').forEach(o => o.classList.remove('selected'));
+          el.classList.add('selected');
+          selectedDate = {
+            eventId:  evt.id,
+            label:    label,
+            date:     evt.start_dt.slice(0, 10),
+            _evt:     evt
+          };
+          submitBtn.disabled = false;
+          // Hide submit hint
+          document.getElementById('submit-hint').style.display = 'none';
+          // Show selected date banner
+          const banner = document.getElementById('selected-date-banner');
+          document.getElementById('banner-date-text').textContent = `Selected: ${label}`;
+          banner.style.display = 'flex';
+          // Auto-scroll to Step 2
+          document.getElementById('step2-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        listEl.appendChild(el);
       });
-
-      listEl.appendChild(el);
     });
 
     // Show copy button
