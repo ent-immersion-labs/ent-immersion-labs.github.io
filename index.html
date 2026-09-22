@@ -462,12 +462,22 @@ const ADMIN_CONFIG = {
             <span class="field-error" id="err-email">Please enter a valid email address.</span>
           </div>
           <div class="form-group">
+            <label for="rep-territory">District *</label>
+            <input type="text" id="rep-territory" placeholder="e.g. Southeast TN" required />
+            <span class="field-error" id="err-territory">Please enter your district.</span>
+          </div>
+          <div class="form-group">
             <label for="rep-surgeon">Surgeon Name</label>
             <input type="text" id="rep-surgeon" placeholder="e.g. Dr. Jane Jones" />
           </div>
           <div class="form-group">
             <label for="rep-account">Account Name</label>
             <input type="text" id="rep-account" placeholder="e.g. St. Mary's Hospital" />
+          </div>
+          <div class="form-group">
+            <label for="rep-account-number">Account Number *</label>
+            <input type="text" id="rep-account-number" placeholder="e.g. 1234567" required />
+            <span class="field-error" id="err-account-number">Please enter the account number.</span>
           </div>
           <div class="form-group full">
             <label for="rep-product-focus">Product Focus *</label>
@@ -484,6 +494,10 @@ const ADMIN_CONFIG = {
               <option>Other / Multiple products</option>
             </select>
             <span class="field-error" id="err-product">Please select a product focus.</span>
+          </div>
+          <div class="form-group full">
+            <label for="rep-notes">Additional Notes</label>
+            <textarea id="rep-notes" placeholder="Any special requests, attendee count, or other details…"></textarea>
           </div>
         </div>
 
@@ -688,9 +702,9 @@ const ADMIN_CONFIG = {
   }
 
   // Clear errors on input
-  ['rep-name', 'rep-email'].forEach(id => {
+  ['rep-name', 'rep-email', 'rep-territory', 'rep-account-number'].forEach(id => {
     document.getElementById(id).addEventListener('input', function () {
-      const errMap = { 'rep-name': 'err-name', 'rep-email': 'err-email' };
+      const errMap = { 'rep-name': 'err-name', 'rep-email': 'err-email', 'rep-territory': 'err-territory', 'rep-account-number': 'err-account-number' };
       setError(id, errMap[id], false);
     });
   });
@@ -704,9 +718,12 @@ const ADMIN_CONFIG = {
 
     const name         = document.getElementById('rep-name').value.trim();
     const email        = document.getElementById('rep-email').value.trim();
+    const territory    = document.getElementById('rep-territory').value.trim();
     const surgeon      = document.getElementById('rep-surgeon').value.trim();
     const account      = document.getElementById('rep-account').value.trim();
+    const accountNum   = document.getElementById('rep-account-number').value.trim();
     const productFocus = document.getElementById('rep-product-focus').value;
+    const notes        = document.getElementById('rep-notes').value.trim();
 
     // ── Inline validation ──────────────────────────────────────────
     let valid = true;
@@ -714,10 +731,13 @@ const ADMIN_CONFIG = {
       document.getElementById('date-list').scrollIntoView({ behavior: 'smooth' });
       valid = false;
     }
-    setError('rep-name',         'err-name',    !name);
-    setError('rep-email',        'err-email',   !email || !/\S+@\S+\.\S+/.test(email));
-    setError('rep-product-focus','err-product', !productFocus);
-    if (!name || !email || !/\S+@\S+\.\S+/.test(email) || !productFocus) valid = false;
+    const emailOk = !!email && /\S+@\S+\.\S+/.test(email);
+    setError('rep-name',           'err-name',           !name);
+    setError('rep-email',          'err-email',          !emailOk);
+    setError('rep-territory',      'err-territory',      !territory);
+    setError('rep-account-number', 'err-account-number', !accountNum);
+    setError('rep-product-focus',  'err-product',        !productFocus);
+    if (!name || !emailOk || !territory || !accountNum || !productFocus) valid = false;
     if (!valid) return;
 
     // ── Show loading state ─────────────────────────────────────────
@@ -729,10 +749,11 @@ const ADMIN_CONFIG = {
     let calendarUpdated = false;
     try {
       const evt        = selectedDate._evt;
-      const eventTitle = `ENT Immersion Lab – Booked: ${name}`;
+      const eventTitle = `ENT Immersion Lab – Booked: ${name} (${territory})`;
       const eventNotes =
-        `Rep: ${name}\nEmail: ${email}\n` +
-        `Surgeon: ${surgeon || '—'}\nAccount: ${account || '—'}\nProduct Focus: ${productFocus || '—'}`;
+        `Rep: ${name}\nEmail: ${email}\nDistrict: ${territory}\n` +
+        `Surgeon: ${surgeon || '—'}\nAccount: ${account || '—'}\nAccount #: ${accountNum}\n` +
+        `Product Focus: ${productFocus}\n\nNotes: ${notes || 'None'}`;
 
       const response = await fetch(
         `https://api.teamup.com/${cfg.teamupCalendarKey}/events/${evt.id}`,
@@ -777,9 +798,12 @@ const ADMIN_CONFIG = {
       ['Date',          selectedDate.label],
       ['Name',          name],
       ['Email',         email],
+      ['District',      territory],
       surgeon      ? ['Surgeon',       surgeon]      : null,
       account      ? ['Account',       account]      : null,
+      ['Account #',     accountNum],
       ['Product Focus', productFocus],
+      notes        ? ['Notes',         notes]        : null,
     ].filter(Boolean);
 
     document.getElementById('success-details').innerHTML = rows
@@ -796,7 +820,7 @@ const ADMIN_CONFIG = {
   // ── Warn before leaving with unsaved work ────────────────────────
   function formHasData() {
     if (selectedDate) return true;
-    return ['rep-name','rep-email','rep-surgeon','rep-account']
+    return ['rep-name','rep-email','rep-territory','rep-surgeon','rep-account','rep-account-number','rep-notes']
       .some(id => document.getElementById(id).value.trim() !== '') ||
       document.getElementById('rep-product-focus').value !== '';
   }
