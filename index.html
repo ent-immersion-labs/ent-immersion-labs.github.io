@@ -462,28 +462,34 @@ const ADMIN_CONFIG = {
             <span class="field-error" id="err-email">Please enter a valid email address.</span>
           </div>
           <div class="form-group">
-            <label for="rep-territory">District *</label>
-            <input type="text" id="rep-territory" placeholder="e.g. Southeast TN" required />
-            <span class="field-error" id="err-territory">Please enter your district.</span>
-          </div>
-          <div class="form-group full">
-            <label for="rep-surgeon">Surgeon / Account</label>
-            <input type="text" id="rep-surgeon" placeholder="e.g. Dr. Jones — St. Mary's Hospital" />
-            <input type="hidden" id="rep-account" value="" />
+            <label for="rep-surgeon">Surgeon Name</label>
+            <input type="text" id="rep-surgeon" placeholder="e.g. Dr. Jane Jones" />
           </div>
           <div class="form-group">
-            <label for="rep-product-focus">Lab Product Focus</label>
-            <input type="text" id="rep-product-focus" placeholder="e.g. NIM, StealthStation" />
+            <label for="rep-account">Account Name</label>
+            <input type="text" id="rep-account" placeholder="e.g. St. Mary's Hospital" />
           </div>
           <div class="form-group full">
-            <label for="rep-notes">Additional Notes</label>
-            <textarea id="rep-notes" placeholder="Any special requests, attendee count, or other details…"></textarea>
+            <label for="rep-product-focus">Product Focus *</label>
+            <select id="rep-product-focus" required>
+              <option value="" disabled selected>Select a product focus</option>
+              <option>Hands-On Innovation Lab — ENT AiBLE™</option>
+              <option>Touch Surgery™</option>
+              <option>AXiS™ ENT Navigation</option>
+              <option>ApexCut</option>
+              <option>NIM Vital™</option>
+              <option>PTeye™</option>
+              <option>Localized Drug Delivery — PROPEL™ / SINUVA™ / Novapak™</option>
+              <option>Eustachian Tube Balloon</option>
+              <option>Other / Multiple products</option>
+            </select>
+            <span class="field-error" id="err-product">Please select a product focus.</span>
           </div>
         </div>
 
         <button type="submit" class="btn-submit" id="submit-btn" disabled>
           <div class="btn-spinner" id="btn-spinner"></div>
-          <span id="btn-label">Submit Booking Request →</span>
+          <span id="btn-label">Submit Lab Request →</span>
         </button>
         <p id="submit-hint">Select a date above to continue</p>
       </form>
@@ -682,11 +688,14 @@ const ADMIN_CONFIG = {
   }
 
   // Clear errors on input
-  ['rep-name', 'rep-email', 'rep-territory'].forEach(id => {
+  ['rep-name', 'rep-email'].forEach(id => {
     document.getElementById(id).addEventListener('input', function () {
-      const errMap = { 'rep-name': 'err-name', 'rep-email': 'err-email', 'rep-territory': 'err-territory' };
+      const errMap = { 'rep-name': 'err-name', 'rep-email': 'err-email' };
       setError(id, errMap[id], false);
     });
+  });
+  document.getElementById('rep-product-focus').addEventListener('change', function () {
+    setError('rep-product-focus', 'err-product', false);
   });
 
   // ── Form submission ──────────────────────────────────────────────
@@ -695,11 +704,9 @@ const ADMIN_CONFIG = {
 
     const name         = document.getElementById('rep-name').value.trim();
     const email        = document.getElementById('rep-email').value.trim();
-    const territory    = document.getElementById('rep-territory').value.trim();
     const surgeon      = document.getElementById('rep-surgeon').value.trim();
-    const account      = surgeon;
-    const productFocus = document.getElementById('rep-product-focus').value.trim();
-    const notes        = document.getElementById('rep-notes').value.trim();
+    const account      = document.getElementById('rep-account').value.trim();
+    const productFocus = document.getElementById('rep-product-focus').value;
 
     // ── Inline validation ──────────────────────────────────────────
     let valid = true;
@@ -707,10 +714,10 @@ const ADMIN_CONFIG = {
       document.getElementById('date-list').scrollIntoView({ behavior: 'smooth' });
       valid = false;
     }
-    setError('rep-name',      'err-name',      !name);
-    setError('rep-email',     'err-email',      !email || !/\S+@\S+\.\S+/.test(email));
-    setError('rep-territory', 'err-territory',  !territory);
-    if (!name || !email || !/\S+@\S+\.\S+/.test(email) || !territory) valid = false;
+    setError('rep-name',         'err-name',    !name);
+    setError('rep-email',        'err-email',   !email || !/\S+@\S+\.\S+/.test(email));
+    setError('rep-product-focus','err-product', !productFocus);
+    if (!name || !email || !/\S+@\S+\.\S+/.test(email) || !productFocus) valid = false;
     if (!valid) return;
 
     // ── Show loading state ─────────────────────────────────────────
@@ -722,10 +729,10 @@ const ADMIN_CONFIG = {
     let calendarUpdated = false;
     try {
       const evt        = selectedDate._evt;
-      const eventTitle = `ENT Immersion Lab – Booked: ${name} (${territory})`;
+      const eventTitle = `ENT Immersion Lab – Booked: ${name}`;
       const eventNotes =
-        `Rep: ${name}\nEmail: ${email}\nDistrict: ${territory}\n` +
-        `Surgeon / Account: ${surgeon || '—'}\nProduct Focus: ${productFocus || '—'}\n\nNotes: ${notes || 'None'}`;
+        `Rep: ${name}\nEmail: ${email}\n` +
+        `Surgeon: ${surgeon || '—'}\nAccount: ${account || '—'}\nProduct Focus: ${productFocus || '—'}`;
 
       const response = await fetch(
         `https://api.teamup.com/${cfg.teamupCalendarKey}/events/${evt.id}`,
@@ -770,10 +777,9 @@ const ADMIN_CONFIG = {
       ['Date',          selectedDate.label],
       ['Name',          name],
       ['Email',         email],
-      ['District',      territory],
-      surgeon      ? ['Surgeon / Account', surgeon]   : null,
-      productFocus ? ['Product Focus', productFocus] : null,
-      notes        ? ['Notes',         notes]        : null,
+      surgeon      ? ['Surgeon',       surgeon]      : null,
+      account      ? ['Account',       account]      : null,
+      ['Product Focus', productFocus],
     ].filter(Boolean);
 
     document.getElementById('success-details').innerHTML = rows
@@ -790,8 +796,9 @@ const ADMIN_CONFIG = {
   // ── Warn before leaving with unsaved work ────────────────────────
   function formHasData() {
     if (selectedDate) return true;
-    return ['rep-name','rep-email','rep-territory','rep-surgeon','rep-product-focus','rep-notes']
-      .some(id => document.getElementById(id).value.trim() !== '');
+    return ['rep-name','rep-email','rep-surgeon','rep-account']
+      .some(id => document.getElementById(id).value.trim() !== '') ||
+      document.getElementById('rep-product-focus').value !== '';
   }
   window.addEventListener('beforeunload', function (e) {
     if (formHasData()) {
