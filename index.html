@@ -167,6 +167,38 @@
       font-weight: 600;
     }
     #selected-date-banner .banner-icon { font-size: 1rem; }
+    /* Product focus checkbox grid */
+    .label-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #888; }
+    .product-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      border: 1.5px solid transparent;
+      border-radius: 8px;
+      transition: border-color 0.15s;
+    }
+    .product-grid.error { border-color: #d32f2f; padding: 6px; }
+    .product-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1.5px solid #d0d8e8;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      background: #fff;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: #1a1a2e;
+      text-transform: none;
+      letter-spacing: 0;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .product-option:hover { border-color: #003da5; background: #f5f7fc; }
+    .product-option:has(input:checked) { border-color: #003da5; background: #eef2fb; }
+    .product-option input { accent-color: #003da5; width: 16px; height: 16px; flex-shrink: 0; margin: 0; }
+    @media (max-width: 560px) { .product-grid { grid-template-columns: 1fr; } }
     /* Submit hint */
     #submit-hint {
       text-align: center;
@@ -466,9 +498,9 @@ const ADMIN_CONFIG = {
             <input type="text" id="rep-territory" placeholder="e.g. Southeast TN" required />
             <span class="field-error" id="err-territory">Please enter your district.</span>
           </div>
-          <div class="form-group">
-            <label for="rep-surgeon">Surgeon Name</label>
-            <input type="text" id="rep-surgeon" placeholder="e.g. Dr. Jane Jones" />
+          <div class="form-group full">
+            <label for="rep-surgeon">HCP Name(s) <span class="label-hint">(one per line if more than one)</span></label>
+            <textarea id="rep-surgeon" rows="2" placeholder="e.g. Dr. Jane Jones&#10;Dr. Sam Patel"></textarea>
           </div>
           <div class="form-group">
             <label for="rep-account">Account Name</label>
@@ -480,20 +512,19 @@ const ADMIN_CONFIG = {
             <span class="field-error" id="err-account-number">Please enter the account number.</span>
           </div>
           <div class="form-group full">
-            <label for="rep-product-focus">Product Focus *</label>
-            <select id="rep-product-focus" required>
-              <option value="" disabled selected>Select a product focus</option>
-              <option>Hands-On Innovation Lab — ENT AiBLE™</option>
-              <option>Touch Surgery™</option>
-              <option>AXiS™ ENT Navigation</option>
-              <option>ApexCut</option>
-              <option>NIM Vital™</option>
-              <option>PTeye™</option>
-              <option>Localized Drug Delivery — PROPEL™ / SINUVA™ / Novapak™</option>
-              <option>Eustachian Tube Balloon</option>
-              <option>Other / Multiple products</option>
-            </select>
-            <span class="field-error" id="err-product">Please select a product focus.</span>
+            <label>Product Focus * <span class="label-hint">(select all that apply)</span></label>
+            <div class="product-grid" id="rep-product-focus">
+              <label class="product-option"><input type="checkbox" name="product" value="Hands-On Innovation Lab — ENT AiBLE™" /><span>Hands-On Innovation Lab — ENT AiBLE™</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="Touch Surgery™" /><span>Touch Surgery™</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="AXiS™ ENT Navigation" /><span>AXiS™ ENT Navigation</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="ApexCut" /><span>ApexCut</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="NIM Vital™" /><span>NIM Vital™</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="PTeye™" /><span>PTeye™</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="Localized Drug Delivery — PROPEL™ / SINUVA™ / Novapak™" /><span>Localized Drug Delivery — PROPEL™ / SINUVA™ / Novapak™</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="Eustachian Tube Balloon" /><span>Eustachian Tube Balloon</span></label>
+              <label class="product-option"><input type="checkbox" name="product" value="Other" /><span>Other</span></label>
+            </div>
+            <span class="field-error" id="err-product">Please select at least one product.</span>
           </div>
           <div class="form-group full">
             <label for="rep-notes">Additional Notes</label>
@@ -708,8 +739,10 @@ const ADMIN_CONFIG = {
       setError(id, errMap[id], false);
     });
   });
+  const productBoxes = () => [...document.querySelectorAll('input[name="product"]')];
+  const selectedProducts = () => productBoxes().filter(cb => cb.checked).map(cb => cb.value);
   document.getElementById('rep-product-focus').addEventListener('change', function () {
-    setError('rep-product-focus', 'err-product', false);
+    if (selectedProducts().length) setError('rep-product-focus', 'err-product', false);
   });
 
   // ── Form submission ──────────────────────────────────────────────
@@ -719,10 +752,11 @@ const ADMIN_CONFIG = {
     const name         = document.getElementById('rep-name').value.trim();
     const email        = document.getElementById('rep-email').value.trim();
     const territory    = document.getElementById('rep-territory').value.trim();
-    const surgeon      = document.getElementById('rep-surgeon').value.trim();
+    const surgeon      = document.getElementById('rep-surgeon').value.split('\n').map(l => l.trim()).filter(Boolean).join(', ');
     const account      = document.getElementById('rep-account').value.trim();
     const accountNum   = document.getElementById('rep-account-number').value.trim();
-    const productFocus = document.getElementById('rep-product-focus').value;
+    const products     = selectedProducts();
+    const productFocus = products.join(', ');
     const notes        = document.getElementById('rep-notes').value.trim();
 
     // ── Inline validation ──────────────────────────────────────────
@@ -752,7 +786,7 @@ const ADMIN_CONFIG = {
       const eventTitle = `ENT Immersion Lab – Booked: ${name} (${territory})`;
       const eventNotes =
         `Rep: ${name}\nEmail: ${email}\nDistrict: ${territory}\n` +
-        `Surgeon: ${surgeon || '—'}\nAccount: ${account || '—'}\nAccount #: ${accountNum}\n` +
+        `HCP(s): ${surgeon || '—'}\nAccount: ${account || '—'}\nAccount #: ${accountNum}\n` +
         `Product Focus: ${productFocus}\n\nNotes: ${notes || 'None'}`;
 
       const response = await fetch(
@@ -799,7 +833,7 @@ const ADMIN_CONFIG = {
       ['Name',          name],
       ['Email',         email],
       ['District',      territory],
-      surgeon      ? ['Surgeon',       surgeon]      : null,
+      surgeon      ? ['HCP(s)',        surgeon]      : null,
       account      ? ['Account',       account]      : null,
       ['Account #',     accountNum],
       ['Product Focus', productFocus],
@@ -822,7 +856,7 @@ const ADMIN_CONFIG = {
     if (selectedDate) return true;
     return ['rep-name','rep-email','rep-territory','rep-surgeon','rep-account','rep-account-number','rep-notes']
       .some(id => document.getElementById(id).value.trim() !== '') ||
-      document.getElementById('rep-product-focus').value !== '';
+      selectedProducts().length > 0;
   }
   window.addEventListener('beforeunload', function (e) {
     if (formHasData()) {
