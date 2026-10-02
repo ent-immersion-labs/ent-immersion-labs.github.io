@@ -7,25 +7,23 @@
   <title>Medtronic ENT Immersion Lab Availability</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202610012057" />
+  <link rel="stylesheet" href="styles.css?v=202610012133" />
 </head>
 <body data-step="dates">
 
 <!-- ═══════════════════════════════════════════════════════════════════
      ADMIN CONFIG
-     The page automatically fetches any TeamUp event titled
-     "Open ENT Immersion Lab" and shows it as an available date.
-     Just create events with that title on TeamUp — no edits needed here.
+     The page shows any TeamUp event titled "Open ENT Immersion Lab" as an
+     available date. Just create events with that title on TeamUp.
+     The TeamUp API token lives in the Cloudflare Worker, not in this page.
 ════════════════════════════════════════════════════════════════════ -->
 <script>
 const ADMIN_CONFIG = {
   // Last date to show on the page (YYYY-MM-DD). Bump this to extend the window.
   showDatesThrough: "2027-04-30",
-  calendarLink:      "https://teamup.com/c/mwb2ov/medtronic-ent-education",
-  teamupCalendarKey: "ks5ec5xvdnuwdstp8b",
-  teamupApiToken:    "aa5e53d3b76df21cf80372c71c76da3e5c47ed91bc3f7e52c988b8ca1989cfbf",
-  // Title to look for on TeamUp (case-insensitive match)
-  openEventTitle:    "open ent immersion lab",
+  calendarLink:  "https://teamup.com/c/mwb2ov/medtronic-ent-education",
+  // Cloudflare Worker that holds the TeamUp token and talks to the calendar.
+  proxyUrl:      "https://ent-lab-teamup-proxy.josharegister.workers.dev",
 };
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -193,6 +191,6 @@ const ADMIN_CONFIG = {
 
 </div>
 
-<script src="app.js?v=202610012057"></script>
+<script src="app.js?v=202610012133"></script>
 </body>
 </html>
