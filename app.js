@@ -54,14 +54,9 @@
 
     let events = [];
     try {
-      const res = await fetch(
-        `https://api.teamup.com/${cfg.teamupCalendarKey}/events?startDate=${start}&endDate=${end}`,
-        { headers: { 'Teamup-Token': cfg.teamupApiToken } }
-      );
+      const res = await fetch(`${cfg.proxyUrl}/events?startDate=${start}&endDate=${end}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      events = (data.events || []).filter(e => e.title.trim().toLowerCase() === cfg.openEventTitle);
-      events.sort((a, b) => a.start_dt.localeCompare(b.start_dt));
+      events = (await res.json()).events || [];
     } catch (err) {
       console.error('Failed to load dates from TeamUp:', err);
       listEl.innerHTML = '<div class="no-dates">Unable to load available dates. Please try refreshing the page or contact your manager.</div>';
@@ -216,29 +211,18 @@
     submitBtn.classList.add('loading');
     document.getElementById('btn-label').textContent = 'Submitting…';
 
-    // ── 1. Update the existing TeamUp event ───────────────────────────
+    // ── 1. Book via proxy (token stays server-side) ──────────────────
     let calendarUpdated = false;
     try {
-      const evt        = selectedDate._evt;
-      const eventTitle = `ENT Immersion Lab – Booked: ${name} (${territory})`;
-      const eventNotes =
-        `Rep: ${name}\nEmail: ${email}\nDistrict: ${territory}\n` +
-        `HCP(s): ${surgeon || '—'}\nAccount: ${account || '—'}\nAccount #: ${accountNum}\n` +
-        `Product Focus: ${productFocus}\n\nNotes: ${notes || 'None'}`;
-
-      const response = await fetch(`https://api.teamup.com/${cfg.teamupCalendarKey}/events/${evt.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Teamup-Token': cfg.teamupApiToken },
-        body: JSON.stringify({
-          id: evt.id, subcalendar_ids: evt.subcalendar_ids,
-          start_dt: evt.start_dt.slice(0, 10), end_dt: evt.end_dt.slice(0, 10),
-          all_day: true, title: eventTitle, notes: eventNotes
-        })
+      const response = await fetch(`${cfg.proxyUrl}/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: selectedDate.eventId, name, email, territory, surgeon, account, accountNum, productFocus, notes })
       });
       if (response.ok) calendarUpdated = true;
-      else console.error('TeamUp API error:', response.status, await response.json().catch(() => ({})));
+      else console.error('Booking proxy error:', response.status, await response.json().catch(() => ({})));
     } catch (err) {
-      console.error('TeamUp API fetch error:', err);
+      console.error('Booking proxy fetch error:', err);
     }
 
     // ── 2. Success screen ─────────────────────────────────────────────
